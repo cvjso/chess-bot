@@ -124,23 +124,24 @@ async def on_game(interaction: discord.Interaction):
     await interaction.response.send_message(display_board(current_board))
 
 @tree.command(name="play", description="play a move in the current game")
-@app_commands.describe(from_m = "actual position", to_m = "target position to move")
-async def on_play(interaction: discord.Interaction, from_m:str, to_m:str):
+@app_commands.describe(movement = "target position to move")
+async def on_play(interaction: discord.Interaction, movement:str):
     global billboard
     username = interaction.user
     if not is_user_in_game(username, boards.keys()):
         return await interaction.response.send_message("User not in game")
     board_key = get_board_by_user(username, boards.keys())
     board = boards[board_key]
-    movement = chess.Move.from_uci(from_m + to_m)
-    if movement not in board.legal_moves:
+    try:
+        board.push_san(movement)
+    except Exception as ex:
+        print(ex)
         return await interaction.response.send_message("Movement is ilegal")
-    board.push(movement)
     if board.is_checkmate():
         end_game(username)
         add_to_billboard(username)
         await interaction.response.send_message(display_board(board))
-        return await interaction.followup.send(f"Checkmate! user *{username}* has won, having `{billboard[username]}` victories")
+        return await interaction.followup.send(f"Checkmate! user *{username.mention}* has won, having `{billboard[username]}` victories")
     other_player = board_key[0] if board_key[1] == username else board_key[1]
     await interaction.response.send_message(display_board(board))
     await interaction.followup.send(f"It's your turn {other_player.mention}")
@@ -149,5 +150,15 @@ async def on_play(interaction: discord.Interaction, from_m:str, to_m:str):
 async def on_billboard(interaction: discord.Interaction):
     global billboard
     await interaction.response.send_message(display_billboard(billboard))
+
+@tree.command(name="surrender", description="give up on the match")
+async def on_surrender(interaction: discord.Interaction):
+    global billboard, players, boards
+    username = interaction.user
+    board_key = get_board_by_user(username, boards.keys())
+    other_player = board_key[0] if board_key[1] == username else board_key[1]
+    add_to_billboard(other_player)
+    await interaction.response.send_message(f"{username.mention} has surrendered, {other_player.mention} won!, having `{billboard[other_player]}` victories")
+
 
 client.run(TOKEN)
