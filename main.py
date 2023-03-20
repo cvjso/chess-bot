@@ -5,7 +5,7 @@ from discord import app_commands
 import chess
 import chess.svg
 from cairosvg import svg2png
-
+import sqlite3
 
 from dotenv import load_dotenv, find_dotenv
 
@@ -24,10 +24,50 @@ boards = {}
 players = []
 billboard = {}
 
+DB_CONN = sqlite3.connect("main.db")
+DB_CURSOR = DB_CONN.cursor()
+
+def setup_db():
+    global billboard
+    DB_CURSOR.execute(
+        """
+        CREATE TABLE IF NOT EXISTS users (
+            id INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,
+            name TEXT NOT NULL,
+            points INTEGET NOT NULL
+        )
+        """
+    )
+    DB_CURSOR.execute("SELECT * FROM users")
+    db_result = DB_CURSOR.fetchall()
+    for entry in db_result:
+        billboard[entry[1]] = entry[2]
+
+# def load_db():
+#     global billboard
+
+def add_to_db():
+    global billboard
+    for key, value in billboard.items():
+        DB_CURSOR.execute(f"SELECT id FROM users WHERE name = '{key}'")
+        select_result = DB_CURSOR.fetchall()
+        if len(select_result):
+            user_id = select_result[0][0]
+            DB_CURSOR.execute(f"""
+                UPDATE users
+                SET points = {value}
+                WHERE id = {user_id}
+            """)
+        else:
+            DB_CURSOR.execute(f"INSERT INTO users (name, points) VALUES ('{key}', '{value}')")
+    DB_CONN.commit()
+
 def add_to_billboard(user):
+    user = str(user)
     if user not in billboard.keys():
         billboard[user] = 0
     billboard[user] += 1
+    add_to_db()
 
 def display_board(_board):
     if _board == None:
@@ -97,6 +137,7 @@ def end_game(user):
 @client.event
 async def on_ready():
     print(f'We have logged in as {client.user}')
+    setup_db()
     await tree.sync()
 
 @tree.command(name="hi", description="says hi to chat")
@@ -159,6 +200,12 @@ async def on_surrender(interaction: discord.Interaction):
     other_player = board_key[0] if board_key[1] == username else board_key[1]
     add_to_billboard(other_player)
     await interaction.response.send_message(f"{username.mention} has surrendered, {other_player.mention} won!, having `{billboard[other_player]}` victories")
+
+@tree.command(name="grante_me_points", description="debug")
+async def on_point(interaction: discord.Interaction):
+    global billboard
+    add_to_billboard(interaction.user)
+    await interaction.response.send_message(display_billboard(billboard))
 
 
 client.run(TOKEN)
