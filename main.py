@@ -201,11 +201,5 @@ async def on_surrender(interaction: discord.Interaction):
     add_to_billboard(other_player)
     await interaction.response.send_message(f"{username.mention} has surrendered, {other_player.mention} won!, having `{billboard[other_player]}` victories")
 
-@tree.command(name="grante_me_points", description="debug")
-async def on_point(interaction: discord.Interaction):
-    global billboard
-    add_to_billboard(interaction.user)
-    await interaction.response.send_message(display_billboard(billboard))
-
 
 client.run(TOKEN)
