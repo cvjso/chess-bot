@@ -1,13 +1,11 @@
-# This example requires the 'message_content' intent.
 import os
 import discord
 from discord import app_commands
 import chess
 import chess.svg
-from cairosvg import svg2png
 import sqlite3
 
-from dotenv import load_dotenv, find_dotenv
+from dotenv import load_dotenv
 
 load_dotenv()
 
@@ -42,9 +40,6 @@ def setup_db():
     db_result = DB_CURSOR.fetchall()
     for entry in db_result:
         billboard[entry[1]] = entry[2]
-
-# def load_db():
-#     global billboard
 
 def add_to_db():
     global billboard
